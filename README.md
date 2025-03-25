@@ -1,2 +1,2 @@
-# devops-bootstrap
+# ops-bootstrap
 Minimal developer operations bootstrap
