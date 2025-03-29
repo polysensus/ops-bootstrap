@@ -1,7 +1,7 @@
 version: '3'
 vars:
   PROJECT_PREFIX: '{{.PROJECT_PREFIX | default (.USER_WORKING_DIR | osBase | upper) | replace "-" "_" }}'
-  ENV_SCOPE: '{{.ENV_SCOPE | default "" }}'
+  ENV_SCOPE: '{{.ENV_SCOPE | default ".bootstrap" }}'
 
 tasks:
 
@@ -17,6 +17,8 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
       - |
+        echo "ENV_SCOPE: '{{.ENV_SCOPE}}'
+
         clones_var_name="${{.PROJECT_PREFIX}}_GIT_CLONES_SSH"
         echo "The following .env files are being used:
         - {{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}
