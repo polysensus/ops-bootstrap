@@ -1,6 +1,7 @@
 version: '3'
 vars:
   PROJECT_PREFIX: '{{.PROJECT_PREFIX | default (.USER_WORKING_DIR | osBase | upper) | replace "-" "_" }}'
+  ENV_SCOPE: '{{.ENV_SCOPE | default "" }}'
 
 tasks:
 
@@ -11,15 +12,15 @@ tasks:
     desc: show the effective environment
     dotenv:
       # Priority is first listed in preference to subsequent
-      - '{{.USER_WORKING_DIR}}/.env'
-      - '{{.USER_WORKING_DIR}}/.env.secrets'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets'
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
       - |
         clones_var_name="${{.PROJECT_PREFIX}}_GIT_CLONES_SSH"
         echo "The following .env files are being used:
-        - {{.USER_WORKING_DIR}}/.env
-        - {{.USER_WORKING_DIR}}/.env.secrets
+        - {{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}
+        - {{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets
 
         PROJECT_PREFIX: '{{.PROJECT_PREFIX}}'
         {{.PROJECT_PREFIX}}_GIT_CLONES_SSH="${clones_var_name}"\
@@ -29,48 +30,64 @@ tasks:
     desc: extended help and reminders
     dotenv:
       # Priority is first listed in preference to subsequent
-      - '{{.USER_WORKING_DIR}}/.env'
-      - '{{.USER_WORKING_DIR}}/.env.secrets'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets'
     dir: '{{.USER_WORKING_DIR}}'
 
     cmds:
       - |
         clones_var_name="${{.PROJECT_PREFIX}}_GIT_CLONES_SSH"
         echo "{{.PROJECT_PREFIX}}_GIT_CLONES_SSH="${clones_var_name}"
-      
+
+        checkouts_var_name="${{.PROJECT_PREFIX}}_GIT_CHECKOUTS"
+        echo "{{.PROJECT_PREFIX}}_GIT_CHECKOUTS="${checkouts_var_name}"
+
         NOTICE: This command acts in the directory task was run from
 
-
         To configure repositories to clone, create a variable {{.PROJECT_PREFIX}}_GIT_CLONES_SSH in your environment.
+        To configure tags to checkout, create a variable {{.PROJECT_PREFIX}}_GIT_CHECKOUTS in your environment.
 
-        The following control is offered:
-        - Clone a repository with a specific tag by appending '@' to the clone directory name
+        The following control is offered by {{.PROJECT_PREFIX}}_GIT_CLONES_SSH:
         - Clone a repository with a specific clone directory name by appending '#' to the repository URL
 
         Example entries:
         - plain clone: git@github.com:org/repo.git  
-        - clone with tag: git@github.com:org/repo.git@v1.0.0
         - clone with directory: git@github.com:tenetxyz/mud.git#tenetxyz-mud
-        - clone with directory and tag: git@github.com:tenetxyz/mud.git#tenetxyz-mud@v1.0.0
+
+        The following control is offered by {{.PROJECT_PREFIX}}_GIT_CLONES_SSH:
+        - Checkout a specific tag by appending '@' to the clone directory name
+
+        Example entries:
+        - repo@v1.0.0 - checkout tag: (using the repo name as the clone directory, which is the default if # is not in the CLONES var)
+        - tenetxyz-mud@c@0.1.14 - checkout tag for explicit directory when # was used (as above CLONES example for tenetxyz/mud.git)
+
 
         Note that tags can contain '@', only the first '@' is used to split the tag from the directory name
 
-        Example env var with all features:
+        Example env vars with all features:
 
-          {{.PROJECT_PREFIX}}_GIT_CLONES_SSH=\"\\
+        {{.PROJECT_PREFIX}}_GIT_CLONES_SSH=\"\\
           git@github.com:latticexyz/phaserx.git \\
           git@github.com:latticexyz/phaserx.git@v1.2.3 \\
           git@github.com:latticexyz/mud.git#latticexyz-mud \\
           git@github.com:latticexyz/mud.git#latticexyz-mud@create-mud@2.2.14 \\
           \"
+
+        {{.PROJECT_PREFIX}}_GIT_CHECKOUT=\"\\
+          git@github.com:latticexyz/phaserx.git \\
+          git@github.com:latticexyz/phaserx.git@v1.2.3 \\
+          git@github.com:latticexyz/mud.git#latticexyz-mud \\
+          git@github.com:latticexyz/mud.git#latticexyz-mud@create-mud@2.2.14 \\
+          \"
+
         "
 
   clone:
     desc: clone any missing repositories from
     dotenv:
       # Priority is first listed in preference to subsequent
-      - '{{.USER_WORKING_DIR}}/.env'
-      - '{{.USER_WORKING_DIR}}/.env.secrets'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets'
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
       - |
@@ -84,27 +101,34 @@ tasks:
           # If there's no '#', default the clone_dir to name (as git would do automatically)
           [ "$repo" = "$clone_dir" ] && clone_dir="$name"
 
-          # Checkout a specific tag if '@' is present
-          if [[ "$clone_dir" == *"@"* ]]; then
-
-            # Split on the first '@'
-            clone_dir_base=${clone_dir%%@*}
-            clone_dir_tag=${clone_dir#*@}
-
-            if [[ ! -d $clone_dir_base ]]; then
-              git clone $repo $clone_dir_base
-              cd $clone_dir_base
-              git checkout $clone_dir_tag
-            else
-              echo "$item already cloned $item, delete manually to re-clone"
-            fi
-          else
-            if [[ ! -d $clone_dir ]]; then
-              git clone $repo $clone_dir
-            else
-              echo "$item already cloned $item, delete manually to re-clone"
-            fi
+          if [[ -d $clone_dir ]]; then
+            echo "$item already cloned $item, delete manually to re-clone"
+            continue
           fi
+
+          git clone $repo $clone_dir
           
+        done
+        exit 0
+
+  checkout:
+    desc: clone any missing repositories from
+    dotenv:
+      # Priority is first listed in preference to subsequent
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}'
+      - '{{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets'
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - |
+        for item in ${{.PROJECT_PREFIX}}_GIT_CHECKOUTS; do
+          # Split on the first '@'
+          clone_dir_base=${item%%@*}
+          clone_dir_tag=${item#*@}
+          cd $clone_dir_base
+          if ! git diff --quiet || ! git diff --cached --quiet && [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "$clone_dir_base has changes, skipping checkout"
+            continue
+          fi
+          git checkout $clone_dir_tag
         done
         exit 0
