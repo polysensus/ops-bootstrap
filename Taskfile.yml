@@ -17,7 +17,7 @@ tasks:
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
       - |
-        echo "ENV_SCOPE: '{{.ENV_SCOPE}}'
+        echo "ENV_SCOPE: '{{.ENV_SCOPE}}'"
 
         clones_var_name="${{.PROJECT_PREFIX}}_GIT_CLONES_SSH"
         echo "The following .env files are being used:
@@ -25,7 +25,7 @@ tasks:
         - {{.USER_WORKING_DIR}}/.env{{.ENV_SCOPE}}.secrets
 
         PROJECT_PREFIX: '{{.PROJECT_PREFIX}}'
-        {{.PROJECT_PREFIX}}_GIT_CLONES_SSH="${clones_var_name}"\
+        {{.PROJECT_PREFIX}}_GIT_CLONES_SSH=${clones_var_name}
         "
 
   help:
@@ -39,11 +39,12 @@ tasks:
     cmds:
       - |
         clones_var_name="${{.PROJECT_PREFIX}}_GIT_CLONES_SSH"
-        echo "{{.PROJECT_PREFIX}}_GIT_CLONES_SSH="${clones_var_name}"
+        echo "{{.PROJECT_PREFIX}}_GIT_CLONES_SSH=${clones_var_name}"
 
         checkouts_var_name="${{.PROJECT_PREFIX}}_GIT_CHECKOUTS"
-        echo "{{.PROJECT_PREFIX}}_GIT_CHECKOUTS="${checkouts_var_name}"
+        echo "{{.PROJECT_PREFIX}}_GIT_CHECKOUTS=${checkouts_var_name}"
 
+        echo "
         NOTICE: This command acts in the directory task was run from
 
         To configure repositories to clone, create a variable {{.PROJECT_PREFIX}}_GIT_CLONES_SSH in your environment.
